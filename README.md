@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/mrexox/commissioner.svg?branch=main)](https://travis-ci.org/mrexox/commissioner)
 [![Gem Version](https://badge.fury.io/rb/commissioner-guy.svg)](https://badge.fury.io/rb/commissioner-guy)
 
-Calculates charged and received amounts base on provided one. Can call your exchanger if needed. Applies commissions in the right order.
+Calculates charged and received amounts based on provided one. Calls your exchanger if needed. Applies commissions in order that you define.
 
 ## Installation
 

@@ -1,6 +1,8 @@
-# Commissioner
+# Commissioner Guy
 
 [![Build Status](https://travis-ci.org/mrexox/commissioner.svg?branch=main)](https://travis-ci.org/mrexox/commissioner)
+
+Calculates charged and received amounts base on provided one. Can call your exchanger if needed. Applies commissions in the right order.
 
 ## Installation
 

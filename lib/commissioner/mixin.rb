@@ -10,7 +10,7 @@ module Commissioner
     # ]
 
     def calculate(params)
-      Calculator.new(params, config: Commissioner.config, order: @@order).calculate
+      Calculator.new(params, config: Commissioner.config).calculate
     end
   end
 end

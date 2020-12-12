@@ -6,16 +6,9 @@ module Commissioner
     CommissionerArityInvalid = Class.new(StandardError)
 
     HELP_MESSAGE = 'You must provider either charged_amount (with charged_currency) or received_amount (with received_currency). If none or both are non-zero, the service cannot know how to handle this.'.freeze
-    DEFAULT_ORDER = [
-      :reduce_commission,
-      :exchange,
-      :reduce_exchange_commission
-    ].freeze
-
     private_constant :HELP_MESSAGE
 
-
-    def initialize(params, config:, order: DEFAULT_ORDER)
+    def initialize(params, config:)
       @charged_amount = guess_amount(params[:charged_amount], params[:charged_currency])
       @received_amount = guess_amount(params[:received_amount], params[:received_currency])
 
@@ -38,7 +31,6 @@ module Commissioner
         else
           BigDecimal::ROUND_HALF_UP
         end
-      @order = order
     end
 
     def calculate

@@ -1,5 +1,6 @@
 # Commissioner
 
+[![Build Status](https://travis-ci.org/mrexox/commissioner.svg?branch=main)](https://travis-ci.org/mrexox/commissioner)
 
 ## Installation
 

@@ -1,3 +1,4 @@
+require 'ostruct'
 require 'money'
 
 module Commissioner
@@ -5,10 +6,75 @@ module Commissioner
     AmountUnknown = Class.new(StandardError)
     CommissionerArityInvalid = Class.new(StandardError)
 
-    HELP_MESSAGE = 'You must provider either charged_amount (with charged_currency) or received_amount (with received_currency). If none or both are non-zero, the service cannot know how to handle this.'.freeze
-    private_constant :HELP_MESSAGE
+    class Operator
+      OPERATIONS = {
+        exchange: ->(op) { op.exchange },
+        commission: ->(op) { op.apply_commission(commission: op.commission, type: :operation) },
+        exchange_commission: ->(op) { op.apply_commission(commission: op.exchange_commission, type: :exchange) }
+      }
 
-    def initialize(params, config:)
+      attr_reader :commission, :exchange_commission, :exchanger
+      attr_reader :exchange_fee, :fee, :exchange_rate, :amount
+
+      def initialize(params)
+        @amount = params[:amount]
+        @commission = params[:commission]
+        @exchange_commission = params[:exchange_commission]
+        @exchanger = params[:exchanger]
+        @rounding_mode = params[:rounding_mode]
+        @commission_action = params[:commission_action]
+        @from = params[:from_currency]
+        @to = params[:to_currency]
+      end
+
+      def apply_order(order)
+        order.each do |operation|
+          OPERATIONS[operation].call(self)
+        end
+      end
+
+      def apply_commission(commission:, type:)
+        return 0 unless commission
+
+        if @commission_action == :reduce
+          fee = round(@amount.to_f * commission / 100, @amount.currency.to_s)
+          @amount -= fee
+        else
+          fee = round(@amount.to_f * commission / (100 - commission), @amount.currency.to_s)
+          @amount += fee
+        end
+
+        case type
+        when :exchange
+          @exchange_fee = fee
+        else
+          @fee = fee
+        end
+      end
+
+      def round(decimal, currency)
+        Money.with_rounding_mode(@rounding_mode) do
+          Money.from_amount(decimal, currency)
+        end
+      end
+
+      def exchange
+        @amount, @exchange_rate = exchanger.call(@from, @to, @amount)
+      end
+    end
+
+    HELP_MESSAGE = 'You must provider either charged_amount (with charged_currency) or received_amount (with received_currency). If none or both are non-zero, the service cannot know how to handle this.'.freeze
+    DEFAULT_ORDER = [
+      :commission,
+      :exchange,
+      :exchange_commission
+    ].freeze
+
+    private_constant :HELP_MESSAGE
+    private_constant :DEFAULT_ORDER
+    private_constant :Operator
+
+    def initialize(params, config:, order: DEFAULT_ORDER)
       @charged_amount = guess_amount(params[:charged_amount], params[:charged_currency])
       @received_amount = guess_amount(params[:received_amount], params[:received_currency])
 
@@ -20,6 +86,7 @@ module Commissioner
       end
 
       @exchanger = config.exchanger
+      @order = order
       @rounding_mode =
         case config.rounding_mode
         when :up
@@ -34,53 +101,69 @@ module Commissioner
     end
 
     def calculate
-      if !empty?(@received_amount) && empty?(@charged_amount)
-        @charged_amount = calculate_for_received
-      elsif !empty?(@charged_amount) && empty?(@received_amount)
-        @received_amount = calculate_for_charged
+      @result = OpenStruct.new(
+        received_amount: @received_amount,
+        charged_amount: @charged_amount,
+        fee: 0,
+        exchange_fee: 0,
+        exchange_rate: 0
+      )
+
+      if !empty?(@charged_amount) && @received_amount.zero?
+        calculate_for_charged
+      elsif !empty?(@received_amount) && @charged_amount.zero?
+        calculate_for_received
       else
         raise AmountUnknown.new(HELP_MESSAGE)
       end
 
-      OpenStruct.new(
-        received_amount: @received_amount,
-        charged_amount: @charged_amount,
-        fee: @fee,
-        exchange_fee: @exchange_fee,
-        exchange_rate: @exchange_rate
-      )
+      @result
     end
 
     private
-
-    attr_reader :exchange_commission, :commission, :exchanger
 
     def empty?(amount)
       amount.nil? || amount.zero?
     end
 
-    def calculate_for_received
-      amount = @received_amount
+    def calculate_for_charged
+      operator = Operator.new(
+        from_currency: @charged_amount.currency.to_s,
+        to_currency: @received_amount.currency.to_s,
+        amount: @charged_amount,
+        commission: @commission,
+        exchange_commission: @exchange_commission,
+        exchanger: @exchanger,
+        rounding_mode: @rounding_mode,
+        commission_action: :reduce
+      )
 
-      amount, @exchange_fee = add_commission(amount, exchange_commission)
+      operator.apply_order(@order)
 
-      amount, @exchange_rate = exchange(amount) if @charged_amount.currency != @received_amount.currency
-
-      amount, @fee = add_commission(amount, commission)
-
-      amount
+      @result.received_amount = operator.amount
+      @result.fee = operator.fee
+      @result.exchange_fee = operator.exchange_fee
+      @result.exchange_rate = operator.exchange_rate
     end
 
-    def calculate_for_charged
-      amount = @charged_amount
+    def calculate_for_received
+      operator = Operator.new(
+        from_currency: @charged_amount.currency.to_s,
+        to_currency: @received_amount.currency.to_s,
+        amount: @received_amount,
+        commission: @commission,
+        exchange_commission: @exchange_commission,
+        exchanger: @exchanger,
+        rounding_mode: @rounding_mode,
+        commission_action: :add
+      )
 
-      amount, @fee = reduce_commission(amount, commission)
+      operator.apply_order(@order.reverse)
 
-      amount, @exchange_rate = exchange(amount) if @charged_amount.currency != @received_amount.currency
-
-      amount, @exchange_fee = reduce_commission(amount, exchange_commission)
-
-      amount
+      @result.charged_amount = operator.amount
+      @result.fee = operator.fee
+      @result.exchange_fee = operator.exchange_fee
+      @result.exchange_rate = operator.exchange_rate
     end
 
     def guess_amount(amount, currency)
@@ -92,32 +175,6 @@ module Commissioner
       when NilClass
         Money.new(0, currency) if currency.is_a?(String)
       end
-    end
-
-    def reduce_commission(amount, commission)
-      return 0 unless commission
-      fee = round(amount.to_f * commission / 100, amount.currency.to_s)
-      amount -= fee
-
-      [amount, fee]
-    end
-
-    def add_commission(amount, commission)
-      return 0 unless commission
-      fee = round(amount.to_f * commission / (100 - commission), amount.currency.to_s)
-      amount += fee
-
-      [amount, fee]
-    end
-
-    def round(decimal, currency)
-      Money.with_rounding_mode(@rounding_mode) do
-        Money.from_amount(decimal, currency)
-      end
-    end
-
-    def exchange(amount)
-      exchanger.call(@charged_amount.currency.to_s, @received_amount.currency.to_s, amount)
     end
   end
 end

@@ -70,6 +70,7 @@ class MyCalculator
     calculate(params)
   end
 end
+```
 
 ## Development
 

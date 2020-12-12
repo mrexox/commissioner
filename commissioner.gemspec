@@ -3,7 +3,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'commissioner/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = 'commissioner'
+  spec.name          = 'commissioner-guy'
   spec.version       = Commissioner::VERSION
   spec.authors       = ['Valentine Kiselev']
   spec.email         = ['mrexox@outlook.com']
@@ -16,8 +16,6 @@ Gem::Specification.new do |spec|
   # Prevent pushing this gem to RubyGems.org. To allow pushes either set the 'allowed_push_host'
   # to allow pushing to a single host or delete this section to allow pushing to any host.
   if spec.respond_to?(:metadata)
-    spec.metadata['allowed_push_host'] = 'http://rubygems.org'
-
     spec.metadata['homepage_uri'] = spec.homepage
     spec.metadata['source_code_uri'] = 'https://github.com/mrexox/commissioner'
   else
@@ -33,7 +31,7 @@ Gem::Specification.new do |spec|
 
   spec.require_paths = ['lib']
 
-  spec.add_runtime_dependency 'dry-configurable'
+  spec.add_runtime_dependency 'dry-configurable', '~> 0.11'
   spec.add_runtime_dependency 'dry-auto_inject', '~> 0.6'
   spec.add_runtime_dependency 'money', '~> 6.13.8'
 

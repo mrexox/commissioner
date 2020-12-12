@@ -1,9 +1,9 @@
 PATH
   remote: .
   specs:
-    commissioner (0.1.0)
+    commissioner-guy (0.1.0)
       dry-auto_inject (~> 0.6)
-      dry-configurable
+      dry-configurable (~> 0.11)
       money (~> 6.13.8)
 
 GEM
@@ -47,7 +47,7 @@ PLATFORMS
 
 DEPENDENCIES
   bundler (~> 1.17)
-  commissioner!
+  commissioner-guy!
   rake (~> 10.0)
   rspec (~> 3.0)
 

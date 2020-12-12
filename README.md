@@ -6,7 +6,7 @@
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'commissioner'
+gem 'commissioner-guy', require: 'commissioner'
 ```
 
 And then execute:
@@ -15,13 +15,15 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install easy_commissioner
+    $ gem install commissioner-guy
 
 ## Usage
 
 ### First, configure the gem
 
 ```ruby
+require 'commissioner'
+
 Commissioner.configure do |config|
   # If you exchange money provider the lambda that receives
   #   from   - string

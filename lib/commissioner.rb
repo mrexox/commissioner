@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'commissioner/version'
 require 'commissioner/calculator'
 require 'commissioner/mixin'
@@ -11,6 +13,6 @@ module Commissioner
   setting :rounding_mode, :half_up # possible values: :up, :down, :half_up, :half_even
 
   def self.calculate(params)
-    Calculator.new(params, config: self.config).calculate
+    Calculator.new(params, config: config).calculate
   end
 end

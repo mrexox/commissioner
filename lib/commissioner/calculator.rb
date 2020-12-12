@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'ostruct'
 require 'money'
 
@@ -9,12 +11,12 @@ module Commissioner
     class Operator
       OPERATIONS = {
         exchange: ->(op) { op.exchange },
-        commission: ->(op) { op.apply_commission(commission: op.commission, type: :operation) },
-        exchange_commission: ->(op) { op.apply_commission(commission: op.exchange_commission, type: :exchange) }
-      }
+        commission: ->(op) { op.apply_commission(op.commission, :operation) },
+        exchange_commission: ->(op) { op.apply_commission(op.exchange_commission, :exchange) if op.to != op.from }
+      }.freeze
 
-      attr_reader :commission, :exchange_commission, :exchanger
-      attr_reader :exchange_fee, :fee, :exchange_rate, :amount
+      attr_reader :commission, :exchange_commission, :exchanger, :to, :from, :exchange_fee, :fee, :exchange_rate,
+                  :amount
 
       def initialize(params)
         @amount = params[:amount]
@@ -29,11 +31,11 @@ module Commissioner
 
       def apply_order(order)
         order.each do |operation|
-          OPERATIONS[operation].call(self)
+          OPERATIONS[operation]&.call(self)
         end
       end
 
-      def apply_commission(commission:, type:)
+      def apply_commission(commission, type)
         return 0 unless commission
 
         if @commission_action == :reduce
@@ -59,15 +61,17 @@ module Commissioner
       end
 
       def exchange
-        @amount, @exchange_rate = exchanger.call(@from, @to, @amount)
+        @amount, @exchange_rate = exchanger.call(from, to, @amount)
       end
     end
 
-    HELP_MESSAGE = 'You must provider either charged_amount (with charged_currency) or received_amount (with received_currency). If none or both are non-zero, the service cannot know how to handle this.'.freeze
-    DEFAULT_ORDER = [
-      :commission,
-      :exchange,
-      :exchange_commission
+    HELP_MESSAGE = 'You must provider either charged_amount (with charged_currency) '\
+                   'or received_amount (with received_currency). If none or both are '\
+                   'non-zero, the service cannot know how to handle this.'
+    DEFAULT_ORDER = %i[
+      commission
+      exchange
+      exchange_commission
     ].freeze
 
     private_constant :HELP_MESSAGE
@@ -82,7 +86,7 @@ module Commissioner
       @commission = params[:commission] || 0
 
       unless config.exchanger.is_a?(Proc) && config.exchanger.arity == 3
-        raise CommissionerArityInvalid.new("'exchanger' setting must be a lambda with arity of 3")
+        raise CommissionerArityInvalid, "'exchanger' setting must be a lambda with arity of 3"
       end
 
       @exchanger = config.exchanger
@@ -114,7 +118,7 @@ module Commissioner
       elsif !empty?(@received_amount) && @charged_amount.zero?
         calculate_for_received
       else
-        raise AmountUnknown.new(HELP_MESSAGE)
+        raise AmountUnknown, HELP_MESSAGE
       end
 
       @result
@@ -141,8 +145,8 @@ module Commissioner
       operator.apply_order(@order)
 
       @result.received_amount = operator.amount
-      @result.fee = operator.fee
-      @result.exchange_fee = operator.exchange_fee
+      @result.fee = operator.fee if operator.fee
+      @result.exchange_fee = operator.exchange_fee if operator.exchange_fee
       @result.exchange_rate = operator.exchange_rate
     end
 
@@ -161,8 +165,8 @@ module Commissioner
       operator.apply_order(@order.reverse)
 
       @result.charged_amount = operator.amount
-      @result.fee = operator.fee
-      @result.exchange_fee = operator.exchange_fee
+      @result.fee = operator.fee if operator.fee
+      @result.exchange_fee = operator.exchange_fee if operator.exchange_fee
       @result.exchange_rate = operator.exchange_rate
     end
 

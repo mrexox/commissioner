@@ -1,12 +1,13 @@
+# frozen_string_literal: true
+
 module Commissioner
   module Mixin
-    # TODO: Allow configuring order of operations
     Order = ->(*order) { @@order = order }
 
-    @@order = [
-      :commission,
-      :exchange,
-      :exchange_commission
+    @@order = %i[
+      commission
+      exchange
+      exchange_commission
     ]
 
     def calculate(params)

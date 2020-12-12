@@ -77,6 +77,76 @@ class MyCalculator
 end
 ```
 
+#### Specify order
+
+You can specify in which order calculation will be applied. The steps are:
+
+- exchange
+- commission
+- exchange_commission
+
+`exchange` - calls exchanger if currencies of received and charged amounts differ
+`commission` - applies typical commission operation
+`exchange_commission` - applies commission for exchange (in charged currency if ordered before `exchange` or in received currency if ordered after `exchange`)
+
+```ruby
+class MyCalculator
+  include Commissioner::Mixin
+
+  # Default order is:
+  # - :commission
+  # - :exchange
+  # - :exchange_commission
+
+  Order[
+    :commission,
+    :exchange_commission,
+    :exchange
+  ]
+end
+
+MyCalculator.new.calculate(
+  received_amount: 100,
+  received_currency: 'EUR',
+  charged_currency: 'USD',
+  commission: 10,
+  exchange_commission: 15
+).to_h
+# =>
+#   {
+#     :received_amount => #<Money fractional:10000 currency:EUR>,
+#     :charged_amount => #<Money fractional:13072 currency:USD>,
+#     :fee => #<Money fractional:1307 currency:USD>,
+#     :exchange_fee => #<Money fractional:1765 currency:USD>,
+#     :exchange_rate => 1
+#    }
+
+# Changing the order
+class MyCalculator
+  Order[
+    :exchange_commission,
+    :exchange,
+    :commission
+  ]
+end
+
+MyCalculator.new.calculate(
+  received_amount: 100,
+  received_currency: 'EUR',
+  charged_currency: 'USD',
+  commission: 10,
+  exchange_commission: 15
+).to_h
+# =>
+#   {
+#     :received_amount => #<Money fractional:10000 currency:EUR>,
+#     :charged_amount => #<Money fractional:13072 currency:USD>,
+#     :fee => #<Money fractional:1111 currency:EUR>,
+#     :exchange_fee => #<Money fractional:1961 currency:USD>,
+#     :exchange_rate => 1
+#    }
+```
+
 ## Development
 
 - [x] Custom exchanger
@@ -84,7 +154,8 @@ end
 - [x] Commission for operation
 - [x] Commission for exchange
 - [x] No matter whether received or charged amount is provided, the calculation result is the same
-- [ ] User-defined order of commissions aplying
+- [x] User-defined order of commissions aplying and exchanging
+- [ ] Custom commissions and exchanges in order
 
 ## Contributing
 

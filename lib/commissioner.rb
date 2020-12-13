@@ -9,7 +9,7 @@ module Commissioner
   extend Dry::Configurable
 
   # A lambda that accepts from_currency, to_currency, amount
-  setting :exchanger, -> (_from, _to, amount) { amount }, reader: true
+  setting :exchanger, ->(_from, _to, amount) { amount }, reader: true
   # Possible values: :up, :down, :half_up, :half_even
   setting :rounding_mode, :half_up
 

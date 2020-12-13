@@ -5,6 +5,14 @@ RSpec.describe Commissioner do
     expect(Commissioner::VERSION).not_to be nil
   end
 
+  context 'with default exchanger' do
+    it 'returns just amount' do
+      result = Commissioner.calculate(charged_amount: 10, charged_currency: 'EUR', received_currency: 'EUR')
+
+      expect(result.received_amount).to eq Money.from_amount(10, 'EUR')
+    end
+  end
+
   context 'with invalid exchanger' do
     before do
       Commissioner.configure do |config|

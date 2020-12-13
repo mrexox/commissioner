@@ -9,8 +9,9 @@ module Commissioner
   extend Dry::Configurable
 
   # A lambda that accepts from_currency, to_currency, amount
-  setting :exchanger, reader: true # arity = 3
-  setting :rounding_mode, :half_up # possible values: :up, :down, :half_up, :half_even
+  setting :exchanger, -> (_from, _to, amount) { amount }, reader: true
+  # Possible values: :up, :down, :half_up, :half_even
+  setting :rounding_mode, :half_up
 
   def self.calculate(params)
     Calculator.new(params, config: config).calculate
